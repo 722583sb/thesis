@@ -1,2 +1,788 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Routegame – Rotterdam (foot, pool → route)</title>
 
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; }
+    .wrap { display: grid; grid-template-columns: 640px 1fr; height: 100vh; }
+    .left { border-right: 1px solid #ddd; padding: 14px; overflow: auto; }
+    #map { height: 100%; width: 100%; }
+
+    .topbar { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+    h1 { font-size: 16px; margin: 0 0 6px; }
+    .meta { font-size: 12px; color: #444; margin: 0 0 10px; line-height: 1.35; }
+
+    .gearBtn {
+      width: 40px; height: 40px;
+      border: 1px solid #ddd; background: #fff; border-radius: 12px;
+      cursor: pointer; font-size: 18px; font-weight: 900;
+      display: grid; place-items: center;
+      flex: 0 0 auto;
+    }
+
+    /* Help button */
+    .helpBtn {
+      width: 40px; height: 40px;
+      border: 1px solid #ddd; background: #fff; border-radius: 12px;
+      cursor: pointer; font-size: 18px; font-weight: 900;
+      display: grid; place-items: center;
+      flex: 0 0 auto;
+    }
+
+    .status { font-size: 12px; padding: 8px; background: #f6f6f6; border: 1px solid #e5e5e5; border-radius: 10px; margin: 10px 0; white-space: pre-wrap; }
+
+    .statsTop { border: 1px solid #e5e5e5; border-radius: 12px; padding: 10px; background: #fafafa; margin: 8px 0 12px; }
+    .row { display:flex; justify-content: space-between; gap: 10px; align-items:center; font-size: 13px; }
+    .row + .row { margin-top: 6px; }
+    .small { font-size: 12px; color:#666; margin-top: 8px; line-height: 1.35; }
+
+    .btnRow { display:flex; gap: 8px; margin-top: 10px; }
+    button {
+      border: 1px solid #ddd; background: #fff; border-radius: 12px;
+      padding: 10px 12px; font-weight: 800; cursor: pointer; flex: 1;
+    }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+
+    .lists { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .listBox { border:1px solid #e5e5e5; border-radius: 12px; background:#fff; padding: 10px; }
+    .listTitle { font-weight: 900; font-size: 13px; margin: 0 0 8px; display:flex; justify-content:space-between; align-items:center; }
+    .pill { font-size: 12px; color:#444; background:#f3f3f3; border:1px solid #e5e5e5; border-radius: 999px; padding: 4px 8px; }
+
+    ul.list { list-style: none; padding: 0; margin: 0; min-height: 80px; }
+    .item {
+      border: 1px solid #ddd; border-radius: 12px; padding: 10px; margin-bottom: 8px;
+      background: #fff; cursor: grab; display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center;
+      position: relative;
+    }
+    .item:active { cursor: grabbing; }
+    .num {
+      width: 26px; height: 26px; border-radius: 999px; background: #f2f2f2; border: 1px solid #ddd;
+      display: grid; place-items: center; font-weight: 800; font-size: 12px;
+      z-index: 2;
+    }
+    .name { font-weight: 750; font-size: 13px; z-index: 2; }
+    .streetTag {
+      position: absolute; inset: 0;
+      border-radius: 12px;
+      opacity: .18;
+      z-index: 1;
+    }
+
+    /* Marker icons */
+    .dot { width: 14px; height: 14px; border-radius: 999px; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+    .dot.yellow { background: #fdd835; }
+    .dot.red { background: #e53935; }
+
+    .numDot {
+      width: 22px; height: 22px;
+      border-radius: 999px;
+      background: #e53935;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px rgba(0,0,0,.25);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1;
+    }
+
+    /* Letter above markers + in legend */
+    .letterPinWrap{ position: relative; width: 22px; height: 34px; }
+    .letterPin{
+      position: absolute; top: -2px; left: 50%; transform: translateX(-50%);
+      font-weight: 900; font-size: 12px; color: #e53935; line-height: 1;
+      text-shadow: 0 1px 0 rgba(255,255,255,.9); pointer-events: none;
+    }
+    .letterPinDot{ position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); }
+    .letterInline{ font-weight: 900; color: #e53935; margin-right: 8px; }
+
+    /* Admin */
+    .panel { border:1px solid #e5e5e5; border-radius: 12px; padding: 10px; background:#fff; margin-top: 10px; }
+    .adminHidden { display:none; }
+
+    .modalBackdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 9999;
+    }
+    .modal {
+      width: min(420px, 100%);
+      background: #fff;
+      border-radius: 16px;
+      border: 1px solid #ddd;
+      box-shadow: 0 10px 30px rgba(0,0,0,.2);
+      padding: 14px;
+    }
+    .modal h2 { margin: 0 0 10px; font-size: 14px; }
+    .modal input {
+      width: 100%; box-sizing: border-box;
+      border:1px solid #ddd; border-radius: 10px; padding: 10px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+  <div class="left">
+
+    <div class="topbar">
+      <div>
+        <h1>Routegame – Rotterdam (foot)</h1>
+        <div class="meta">
+          Sleep adressen uit <b>Beschikbaar</b> naar <b>Jouw route</b>. Zolang je route leeg is, zie je geen lijn.
+          Admin (optimale route) zit achter ⚙️.
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <button class="helpBtn" id="helpBtn" title="Help">?</button>
+        <button class="gearBtn" id="gearBtn" title="Admin">⚙️</button>
+      </div>
+    </div>
+
+    <div class="statsTop">
+      <div class="row"><div><b>Depot</b></div><div id="depotOut">–</div></div>
+      <div class="row"><div><b>Totale afstand</b></div><div id="distOut">–</div></div>
+      <div class="row"><div><b>Score t.o.v. optimum</b></div><div id="scoreOut">–</div></div>
+      <div class="small" id="optOut">Optimale afstand: –</div>
+    </div>
+
+    <div id="status" class="status">Initialiseren…</div>
+
+    <div class="lists">
+      <div class="listBox">
+        <div class="listTitle">
+          <span>Beschikbaar</span>
+          <span class="pill" id="poolCount">0</span>
+        </div>
+        <ul id="poolList" class="list"></ul>
+      </div>
+
+      <div class="listBox">
+        <div class="listTitle">
+          <span>Jouw route (ranglijst)</span>
+          <span class="pill" id="routeCount">0</span>
+        </div>
+        <ul id="routeList" class="list"></ul>
+      </div>
+    </div>
+
+    <div class="btnRow">
+      <button id="undoBtn" disabled>↩ Undo</button>
+      <button id="clearRouteBtn">⟲ Route leegmaken</button>
+    </div>
+
+    <div class="btnRow">
+      <button id="submitBtn" disabled>✅ Submit</button>
+    </div>
+
+    <!-- Admin panel (ONLY optimal route) -->
+    <div id="adminPanel" class="panel adminHidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <div style="font-weight:900;font-size:13px;">Admin</div>
+        <button id="lockAdminBtn" style="flex:0 0 auto; padding:8px 10px;">Sluit</button>
+      </div>
+
+      <div class="btnRow" style="margin-top:10px;">
+        <button id="showOptBtn">⭐ Zet optimale route</button>
+      </div>
+      <div class="small">Wachtwoord nodig om dit te openen.</div>
+    </div>
+
+  </div>
+
+  <div id="map"></div>
+</div>
+
+<!-- Admin password modal -->
+<div id="adminModalBackdrop" class="modalBackdrop">
+  <div class="modal">
+    <h2>Admin toegang</h2>
+    <input id="adminPassInput" type="password" placeholder="Wachtwoord" />
+    <div class="btnRow">
+      <button id="adminCancelBtn">Annuleer</button>
+      <button id="adminOkBtn">Open</button>
+    </div>
+    <div class="small" id="adminErr" style="color:#b00020; display:none; margin-top:8px;">Onjuist wachtwoord.</div>
+  </div>
+</div>
+
+<!-- Info modal (shown on load + via ? button) -->
+<div id="infoModalBackdrop" class="modalBackdrop">
+  <div class="modal">
+    <h2>Informatie</h2>
+    <div class="small" id="infoText" style="font-size:13px; color:#333; margin: 6px 0 10px; white-space: pre-wrap;"></div>
+    <div class="btnRow">
+      <button id="infoCloseBtn">Sluit</button>
+      <button id="infoStartBtn">Starten</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================
+   CONFIG
+   ========================= */
+const ADMIN_PASSWORD = "123";
+
+/* ===== EDIT THESE LATER (easy to find) =====
+   TODO_INFO_TEXT: instruction text shown on page open and via the ? button
+   TODO_THANKS_TEXT: message shown after successful submit
+   TODO_SUBMIT_ENDPOINT: paste your Google Apps Script Web App URL
+*/
+const TODO_INFO_TEXT = "komt later...";
+const TODO_THANKS_TEXT = "bedankt...";
+const TODO_SUBMIT_ENDPOINT = "PLAK_HIER_JE_APPS_SCRIPT_WEB_APP_URL";
+/* ===== END EDIT ===== */
+
+// OSRM foot
+const OSRM_BASE = "https://routing.openstreetmap.de/routed-foot";
+const OSRM_PROFILE = "foot";
+
+/* ====== FIXED DEPOT (NO ADMIN CHANGE) ====== */
+const DEFAULT_DEPOT_LABEL = "William Boothlaan 12C, Rotterdam";
+const DEFAULT_DEPOT_COORDS = { lat: 51.915359536556636, lon: 4.479051525981038 };
+let DEPOT = { id:"DEPOT", label: DEFAULT_DEPOT_LABEL, ...DEFAULT_DEPOT_COORDS };
+
+/* Stops */
+const STOPS = [
+  { id:"S1",  label:"Boomgaardsstraat 304", street:"Boomgaardsstraat", lat:51.9140633, lon:4.4777861 },
+  { id:"S1B", label:"Boomgaardsstraat 90",  street:"Boomgaardsstraat", lat:51.91497994072559, lon:4.477141388208988 },
+
+  { id:"S3",  label:"Witte de Withstraat 29", street:"Witte de Withstraat", lat:51.9159252, lon:4.4778632 },
+  { id:"S8",  label:"Witte de Withstraat 87", street:"Witte de Withstraat", lat:51.9153321, lon:4.4755043 },
+
+  { id:"S9A", label:"Eendrachtsstraat 62",  street:"Eendrachtsstraat", lat:51.91473905631909, lon:4.476680985422409 },
+  { id:"S9",  label:"Eendrachtsstraat 63",  street:"Eendrachtsstraat", lat:51.9150253, lon:4.4761782 },
+  { id:"S11B",label:"Eendrachtsstraat 109-B", street:"Eendrachtsstraat", lat:51.913423100004394, lon:4.477320270820594 },
+  { id:"S11", label:"Eendrachtsstraat 139", street:"Eendrachtsstraat", lat:51.9127709, lon:4.4776926 },
+
+  { id:"S12", label:"Eendrachtsweg 112",    street:"Eendrachtsweg",    lat:51.9120472, lon:4.4773292 },
+  { id:"S14", label:"Eendrachtsweg 45",     street:"Eendrachtsweg",    lat:51.9141695, lon:4.4758863 }
+];
+
+/* Letters per stop (A, B, C, ...) */
+const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const stopLetter = new Map(STOPS.map((s, i) => [s.id, LETTERS[i] || String(i+1)]));
+
+/* Street -> color mapping */
+const PALETTE = ["#EF5350","#AB47BC","#5C6BC0","#29B6F6","#26A69A","#66BB6A","#FFCA28","#FFA726","#8D6E63","#78909C"];
+const uniq = (arr) => Array.from(new Set(arr));
+const streets = uniq(STOPS.map(s => s.street));
+const streetColor = new Map(streets.map((st, i) => [st, PALETTE[i % PALETTE.length]]));
+
+/* DOM refs */
+const depotOut  = document.getElementById("depotOut");
+const distOut   = document.getElementById("distOut");
+const scoreOut  = document.getElementById("scoreOut");
+const optOut    = document.getElementById("optOut");
+const statusEl  = document.getElementById("status");
+
+const poolList  = document.getElementById("poolList");
+const routeList = document.getElementById("routeList");
+const poolCount = document.getElementById("poolCount");
+const routeCount= document.getElementById("routeCount");
+
+const undoBtn   = document.getElementById("undoBtn");
+const clearRouteBtn = document.getElementById("clearRouteBtn");
+const submitBtn = document.getElementById("submitBtn");
+
+const adminPanel = document.getElementById("adminPanel");
+const lockAdminBtn = document.getElementById("lockAdminBtn");
+const showOptBtn = document.getElementById("showOptBtn");
+
+const gearBtn = document.getElementById("gearBtn");
+const adminModalBackdrop = document.getElementById("adminModalBackdrop");
+const adminPassInput = document.getElementById("adminPassInput");
+const adminOkBtn = document.getElementById("adminOkBtn");
+const adminCancelBtn = document.getElementById("adminCancelBtn");
+const adminErr = document.getElementById("adminErr");
+
+/* Info modal refs */
+const helpBtn = document.getElementById("helpBtn");
+const infoModalBackdrop = document.getElementById("infoModalBackdrop");
+const infoText = document.getElementById("infoText");
+const infoCloseBtn = document.getElementById("infoCloseBtn");
+const infoStartBtn = document.getElementById("infoStartBtn");
+
+const setStatus = (m) => statusEl.textContent = m;
+const fmtKm = (m) => (m/1000).toFixed(2) + " km";
+
+/* Map */
+const map = L.map("map", { zoomControl: true }).setView([DEPOT.lat, DEPOT.lon], 14);
+L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+  subdomains: "abcd", maxZoom: 20, attribution: "© OpenStreetMap © CARTO"
+}).addTo(map);
+
+const depotIcon = L.divIcon({ className:"", html:'<div class="dot yellow"></div>', iconSize:[14,14], iconAnchor:[7,7] });
+
+const letterDotIcon = (letter) => L.divIcon({
+  className:"",
+  html: `
+    <div class="letterPinWrap">
+      <div class="letterPin">${letter}</div>
+      <div class="letterPinDot"><div class="dot red"></div></div>
+    </div>
+  `,
+  iconSize:[22,34],
+  iconAnchor:[11,24]
+});
+const letterNumberedIcon = (letter, n) => L.divIcon({
+  className:"",
+  html: `
+    <div class="letterPinWrap">
+      <div class="letterPin">${letter}</div>
+      <div class="letterPinDot"><div class="numDot">${n}</div></div>
+    </div>
+  `,
+  iconSize:[22,34],
+  iconAnchor:[11,24]
+});
+
+let depotMarker = L.marker([DEPOT.lat, DEPOT.lon], { icon: depotIcon }).addTo(map).bindPopup(`<b>Depot</b><br>${DEPOT.label}`);
+
+const stopMarkers = new Map();
+for (const s of STOPS) {
+  const letter = stopLetter.get(s.id) || "";
+  const m = L.marker([s.lat, s.lon], { icon: letterDotIcon(letter) }).addTo(map).bindPopup(`<b>${letter}</b><br>${s.label}`);
+  stopMarkers.set(s.id, m);
+}
+let routeLine = L.polyline([], { weight: 4, opacity: 0.9 }).addTo(map);
+
+/* State: pool + route */
+const shuffle = (arr) => {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+let poolIds = shuffle(STOPS.map(s => s.id));
+let routeIds = [];
+const historyStack = [];
+
+/* Render lists + markers */
+function renderPool() {
+  poolList.innerHTML = "";
+  for (const id of poolIds) {
+    const s = STOPS.find(x => x.id === id);
+    const color = streetColor.get(s.street) || "#999";
+    const li = document.createElement("li");
+    li.className = "item";
+    li.dataset.id = id;
+    li.innerHTML = `
+      <div class="streetTag" style="background:${color}"></div>
+      <div class="num">•</div>
+      <div class="name"><span class="letterInline">${stopLetter.get(id) || ""}</span>${s.label}</div>
+    `;
+    poolList.appendChild(li);
+  }
+  poolCount.textContent = poolIds.length;
+}
+
+function renderRoute() {
+  routeList.innerHTML = "";
+  routeIds.forEach((id, idx) => {
+    const s = STOPS.find(x => x.id === id);
+    const color = streetColor.get(s.street) || "#999";
+    const li = document.createElement("li");
+    li.className = "item";
+    li.dataset.id = id;
+    li.innerHTML = `
+      <div class="streetTag" style="background:${color}"></div>
+      <div class="num">${idx + 1}</div>
+      <div class="name"><span class="letterInline">${stopLetter.get(id) || ""}</span>${s.label}</div>
+    `;
+    routeList.appendChild(li);
+  });
+  routeCount.textContent = routeIds.length;
+}
+
+function updateMarkerStyles() {
+  for (const s of STOPS) {
+    const m = stopMarkers.get(s.id);
+    const letter = stopLetter.get(s.id) || "";
+    if (m) m.setIcon(letterDotIcon(letter));
+  }
+  routeIds.forEach((id, idx) => {
+    const m = stopMarkers.get(id);
+    const letter = stopLetter.get(id) || "";
+    if (m) m.setIcon(letterNumberedIcon(letter, idx + 1));
+  });
+}
+
+function updateSubmitEnabled() {
+  submitBtn.disabled = !(routeIds.length === STOPS.length);
+}
+
+function syncAllUI() {
+  renderPool();
+  renderRoute();
+  updateMarkerStyles();
+  updateSubmitEnabled();
+}
+
+/* Routing + TSP */
+let distMatrix = null;
+let optimal = null;
+
+function toLonLatStr(points) { return points.map(p => `${p.lon},${p.lat}`).join(";"); }
+
+async function osrmTable(points) {
+  const url = `${OSRM_BASE}/table/v1/${OSRM_PROFILE}/${toLonLatStr(points)}?annotations=distance`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("OSRM table HTTP " + res.status);
+  const data = await res.json();
+  if (!data.distances) throw new Error("OSRM table: no distances");
+  return data.distances;
+}
+
+async function osrmRouteShortest(pointsInOrder) {
+  const url = `${OSRM_BASE}/route/v1/${OSRM_PROFILE}/${toLonLatStr(pointsInOrder)}?overview=full&geometries=geojson&continue_straight=false&alternatives=3`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("OSRM route HTTP " + res.status);
+  const data = await res.json();
+  if (!data.routes || data.routes.length === 0) throw new Error("OSRM route: empty");
+  let best = data.routes[0];
+  for (const r of data.routes) {
+    if (typeof r.distance === "number" && r.distance < best.distance) best = r;
+  }
+  return best;
+}
+
+function stopIndexById(id) {
+  const idx = STOPS.findIndex(s => s.id === id);
+  return idx >= 0 ? idx + 1 : null;
+}
+function routeDistanceFromMatrix(orderIds) {
+  let sum = 0, prev = 0;
+  for (const id of orderIds) {
+    const cur = stopIndexById(id);
+    sum += distMatrix[prev][cur];
+    prev = cur;
+  }
+  sum += distMatrix[prev][0];
+  return sum;
+}
+
+function tspHeldKarp(dist) {
+  const nStops = STOPS.length;
+  const ALLMASK = (1 << nStops) - 1;
+
+  const dp = Array.from({ length: 1 << nStops }, () => Array(nStops).fill(Infinity));
+  const parent = Array.from({ length: 1 << nStops }, () => Array(nStops).fill(-1));
+
+  for (let j = 0; j < nStops; j++) dp[1 << j][j] = dist[0][j + 1];
+
+  for (let mask = 1; mask <= ALLMASK; mask++) {
+    for (let j = 0; j < nStops; j++) {
+      if (!(mask & (1 << j))) continue;
+      const pm = mask ^ (1 << j);
+      if (pm === 0) continue;
+      for (let k = 0; k < nStops; k++) {
+        if (!(pm & (1 << k))) continue;
+        const cand = dp[pm][k] + dist[k + 1][j + 1];
+        if (cand < dp[mask][j]) { dp[mask][j] = cand; parent[mask][j] = k; }
+      }
+    }
+  }
+
+  let best = Infinity, bestEnd = -1;
+  for (let j = 0; j < nStops; j++) {
+    const cand = dp[ALLMASK][j] + dist[j + 1][0];
+    if (cand < best) { best = cand; bestEnd = j; }
+  }
+
+  const orderIdx = [];
+  let mask = ALLMASK, cur = bestEnd;
+  while (cur !== -1) {
+    orderIdx.push(cur);
+    const prev = parent[mask][cur];
+    mask ^= (1 << cur);
+    cur = prev;
+  }
+  orderIdx.reverse();
+
+  return { bestDistance: best, bestOrderIds: orderIdx.map(i => STOPS[i].id) };
+}
+
+/* Update route line + stats */
+let updateToken = 0;
+
+function clearStatsAndLine() {
+  routeLine.setLatLngs([]);
+  distOut.textContent = "–";
+  scoreOut.textContent = "–";
+  setStatus("Sleep adressen naar ‘Jouw route’ om te beginnen.");
+}
+
+async function updateRouteAndStats() {
+  if (!distMatrix || !optimal) return;
+
+  depotOut.textContent = DEPOT.label;
+  optOut.textContent = "Optimale afstand: " + fmtKm(optimal.bestDistance);
+
+  if (routeIds.length === 0) {
+    clearStatsAndLine();
+    updateSubmitEnabled();
+    return;
+  }
+
+  const myDistClosed = routeDistanceFromMatrix(routeIds);
+  distOut.textContent = fmtKm(myDistClosed);
+
+  if (routeIds.length === STOPS.length) {
+    const score = Math.max(0, Math.min(100, (optimal.bestDistance / myDistClosed) * 100));
+    scoreOut.textContent = score.toFixed(0) + "%";
+  } else {
+    scoreOut.textContent = "–";
+  }
+
+  updateSubmitEnabled();
+
+  const token = ++updateToken;
+  const points = [DEPOT, ...routeIds.map(id => STOPS.find(s => s.id === id)), DEPOT];
+
+  try {
+    setStatus("Route tekenen (foot)…");
+    const r = await osrmRouteShortest(points);
+    if (token !== updateToken) return;
+    const latlngs = r.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
+    routeLine.setLatLngs(latlngs);
+    setStatus("Klaar. Je kunt blijven slepen.");
+  } catch (e) {
+    console.error(e);
+    setStatus("Route tekenen mislukt. Check internet/OSRM.");
+  }
+}
+
+/* Sortable: pool <-> route */
+function snapshot() {
+  historyStack.push({ poolIds: poolIds.slice(), routeIds: routeIds.slice() });
+  undoBtn.disabled = historyStack.length === 0;
+}
+function restoreSnapshot() {
+  const snap = historyStack.pop();
+  if (!snap) return;
+  poolIds = snap.poolIds.slice();
+  routeIds = snap.routeIds.slice();
+  undoBtn.disabled = historyStack.length === 0;
+  syncAllUI();
+  updateRouteAndStats();
+}
+
+undoBtn.addEventListener("click", restoreSnapshot);
+
+clearRouteBtn.addEventListener("click", () => {
+  snapshot();
+  poolIds = poolIds.concat(routeIds);
+  routeIds = [];
+  syncAllUI();
+  updateRouteAndStats();
+});
+
+function readListIds(ul) {
+  return Array.from(ul.querySelectorAll(".item")).map(li => li.dataset.id);
+}
+
+new Sortable(poolList, {
+  group: { name: "stops", pull: true, put: true },
+  animation: 120,
+  onStart: snapshot,
+  onEnd: () => {
+    poolIds = readListIds(poolList);
+    routeIds = readListIds(routeList);
+    syncAllUI();
+    updateRouteAndStats();
+  }
+});
+
+new Sortable(routeList, {
+  group: { name: "stops", pull: true, put: true },
+  animation: 120,
+  onStart: snapshot,
+  onEnd: () => {
+    poolIds = readListIds(poolList);
+    routeIds = readListIds(routeList);
+    syncAllUI();
+    updateRouteAndStats();
+  }
+});
+
+/* Admin gate (password) */
+let adminUnlocked = false;
+
+function openAdminModal() {
+  adminErr.style.display = "none";
+  adminPassInput.value = "";
+  adminModalBackdrop.style.display = "flex";
+  setTimeout(() => adminPassInput.focus(), 30);
+}
+function closeAdminModal() { adminModalBackdrop.style.display = "none"; }
+
+gearBtn.addEventListener("click", () => {
+  if (adminUnlocked) adminPanel.classList.toggle("adminHidden");
+  else openAdminModal();
+});
+
+adminCancelBtn.addEventListener("click", closeAdminModal);
+adminModalBackdrop.addEventListener("click", (e) => { if (e.target === adminModalBackdrop) closeAdminModal(); });
+
+adminOkBtn.addEventListener("click", () => {
+  const val = adminPassInput.value;
+  if (val === ADMIN_PASSWORD) {
+    adminUnlocked = true;
+    adminPanel.classList.remove("adminHidden");
+    closeAdminModal();
+  } else {
+    adminErr.style.display = "block";
+  }
+});
+lockAdminBtn.addEventListener("click", () => adminPanel.classList.add("adminHidden"));
+
+/* Admin action: set optimal route */
+showOptBtn.addEventListener("click", async () => {
+  if (!optimal) return;
+  snapshot();
+  routeIds = optimal.bestOrderIds.slice();
+  poolIds = STOPS.map(s => s.id).filter(id => !routeIds.includes(id));
+  syncAllUI();
+  updateRouteAndStats();
+});
+
+/* Info modal logic (open on load + via ? button) */
+function openInfoModal(showStartButton) {
+  infoText.textContent = TODO_INFO_TEXT; // <-- TODO_INFO_TEXT aanpassen later
+  infoStartBtn.style.display = showStartButton ? "inline-block" : "none";
+  infoModalBackdrop.style.display = "flex";
+}
+function closeInfoModal() { infoModalBackdrop.style.display = "none"; }
+
+helpBtn.addEventListener("click", () => openInfoModal(false));
+infoCloseBtn.addEventListener("click", closeInfoModal);
+infoStartBtn.addEventListener("click", closeInfoModal);
+infoModalBackdrop.addEventListener("click", (e) => { if (e.target === infoModalBackdrop) closeInfoModal(); });
+
+/* ===== SUBMIT to backend (Google Apps Script Web App) ===== */
+function buildSubmissionPayload() {
+  const myDistClosed = routeIds.length ? routeDistanceFromMatrix(routeIds) : null;
+  const myDistText = (typeof myDistClosed === "number") ? fmtKm(myDistClosed) : "–";
+  const optDistText = (optimal && typeof optimal.bestDistance === "number") ? fmtKm(optimal.bestDistance) : "–";
+
+  let scoreText = "–";
+  let scoreValue = null;
+  if (optimal && typeof optimal.bestDistance === "number" && typeof myDistClosed === "number" && myDistClosed > 0 && routeIds.length === STOPS.length) {
+    scoreValue = Math.max(0, Math.min(100, (optimal.bestDistance / myDistClosed) * 100));
+    scoreText = scoreValue.toFixed(0) + "%";
+  }
+
+  const orderLabels = routeIds.map(id => STOPS.find(s => s.id === id)?.label).filter(Boolean);
+
+  return {
+    timestamp: new Date().toISOString(),
+    depot: DEPOT.label,
+    total_distance_m: (typeof myDistClosed === "number") ? myDistClosed : "",
+    total_distance_text: myDistText,
+    optimal_distance_m: (optimal && typeof optimal.bestDistance === "number") ? optimal.bestDistance : "",
+    optimal_distance_text: optDistText,
+    score_percent: (typeof scoreValue === "number") ? scoreValue.toFixed(2) : "",
+    score_text: scoreText,
+    order: orderLabels
+  };
+}
+
+async function submitToBackend(payload) {
+  if (!TODO_SUBMIT_ENDPOINT || TODO_SUBMIT_ENDPOINT.includes("PLAK_HIER")) {
+    throw new Error("Submit endpoint ontbreekt. Vul TODO_SUBMIT_ENDPOINT in.");
+  }
+
+  const res = await fetch(TODO_SUBMIT_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok === false) {
+    throw new Error(data.error || ("HTTP " + res.status));
+  }
+  return data;
+}
+
+let submittedOnce = false;
+
+submitBtn.addEventListener("click", async () => {
+  if (submittedOnce) return;
+  if (!(routeIds.length === STOPS.length)) return;
+
+  try {
+    submittedOnce = true;
+    submitBtn.disabled = true;
+    setStatus("Versturen...");
+
+    const payload = buildSubmissionPayload();
+    await submitToBackend(payload);
+
+    setStatus(TODO_THANKS_TEXT); // <-- TODO_THANKS_TEXT aanpassen later
+  } catch (e) {
+    console.error(e);
+    setStatus("Versturen mislukt. Probeer opnieuw.");
+    submittedOnce = false;
+    submitBtn.disabled = false;
+  }
+});
+
+/* Init */
+async function init() {
+  syncAllUI();
+  undoBtn.disabled = true;
+
+  depotOut.textContent = DEPOT.label;
+  depotMarker.setPopupContent(`<b>Depot</b><br>${DEPOT.label}`);
+  depotMarker.setLatLng([DEPOT.lat, DEPOT.lon]);
+
+  // Fit map once
+  const group = L.featureGroup([depotMarker, ...stopMarkers.values()]);
+  map.fitBounds(group.getBounds().pad(0.18));
+
+  setStatus("Afstandsmatrix opbouwen via OSRM (foot)…");
+  const ALL = [DEPOT, ...STOPS];
+  distMatrix = await osrmTable(ALL);
+
+  setStatus("Optimale route berekenen (exact)…");
+  optimal = tspHeldKarp(distMatrix);
+
+  optOut.textContent = "Optimale afstand: " + fmtKm(optimal.bestDistance);
+
+  const optimalLabels = [DEPOT.label, ...optimal.bestOrderIds.map(id => STOPS.find(s => s.id === id).label), DEPOT.label];
+  window.__OPTIMAL_ROUTE_ORDER = optimalLabels;
+  console.log("OPTIMALE ROUTE (onderzoeker):", optimalLabels);
+
+  clearStatsAndLine();
+
+  // Show info modal on first open
+  openInfoModal(true);
+}
+
+init().catch(err => {
+  console.error(err);
+  setStatus("Init mislukt: " + (err?.message || err));
+});
+</script>
+</body>
+</html>
