@@ -708,18 +708,27 @@ function buildSubmissionPayload() {
 }
 
 async function submitToBackend(payload) {
-  // IMPORTANT: no headers => avoids CORS preflight issues with Apps Script
   const res = await fetch(SUBMIT_ENDPOINT, {
     method: "POST",
     body: JSON.stringify(payload)
   });
 
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.ok === false) {
-    throw new Error(data.error || ("HTTP " + res.status));
+  // Apps Script geeft soms geen JSON (of error-page HTML). Daarom eerst als text lezen.
+  const text = await res.text();
+  let data = {};
+  try { data = JSON.parse(text); } catch (_) {}
+
+  if (!res.ok) {
+    throw new Error("HTTP " + res.status + " – " + (text ? text.slice(0, 180) : "geen response"));
   }
+  if (data && data.ok === false) {
+    throw new Error(data.error || "Backend ok=false");
+  }
+
+  // Als het géén JSON was maar wel 200, beschouwen we het als OK.
   return data;
 }
+
 
 let submittedOnce = false;
 
@@ -741,12 +750,12 @@ submitBtn.addEventListener("click", async () => {
     await submitToBackend(payload);
 
     setStatus(TODO_THANKS_TEXT); // <-- TODO_THANKS_TEXT aanpassen later
-  } catch (e) {
-    console.error(e);
-    setStatus("Versturen mislukt. Controleer endpoint/deploy en probeer opnieuw.");
-    submittedOnce = false;
-    submitBtn.disabled = false;
-  }
+ } catch (e) {
+  console.error(e);
+  setStatus("Versturen mislukt: " + (e?.message || e));
+  submittedOnce = false;
+  submitBtn.disabled = false;
+}
 });
 
 /* Init */
@@ -788,4 +797,5 @@ init().catch(err => {
 </script>
 </body>
 </html>
+
 
