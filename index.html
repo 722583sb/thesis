@@ -241,12 +241,13 @@ const ADMIN_PASSWORD = "123";
 /* ===== EDIT THESE LATER (easy to find) =====
    TODO_INFO_TEXT: instruction text shown on page open and via the ? button
    TODO_THANKS_TEXT: message shown after successful submit
-   TODO_SUBMIT_ENDPOINT: paste your Google Apps Script Web App URL
 */
 const TODO_INFO_TEXT = "komt later...";
 const TODO_THANKS_TEXT = "bedankt...";
-const TODO_SUBMIT_ENDPOINT = "https://script.google.com/macros/s/AKfycby3dmZIrIeIMmKXc7S_1n73RYEcseJ_YhBCMTjb_d4-JEh1DAn204gLw3GdrYlvRqJ8ng/exec";
-/* ===== END EDIT ===== */
+
+/* ===== SUBMIT ENDPOINT (Google Apps Script Web App URL) ===== */
+const SUBMIT_ENDPOINT = "https://script.google.com/macros/s/AKfycbyM5_KNM2ZriBBwP06nTdnKV0CvqVf8oaZDv3dLYtOj624KfqSRSgGKHZldmbikfza2KQ/exec";
+/* ===== END CONFIG ===== */
 
 // OSRM foot
 const OSRM_BASE = "https://routing.openstreetmap.de/routed-foot";
@@ -678,7 +679,7 @@ infoCloseBtn.addEventListener("click", closeInfoModal);
 infoStartBtn.addEventListener("click", closeInfoModal);
 infoModalBackdrop.addEventListener("click", (e) => { if (e.target === infoModalBackdrop) closeInfoModal(); });
 
-/* ===== SUBMIT to backend (Google Apps Script Web App) ===== */
+/* ===== SUBMIT to backend (Apps Script) ===== */
 function buildSubmissionPayload() {
   const myDistClosed = routeIds.length ? routeDistanceFromMatrix(routeIds) : null;
   const myDistText = (typeof myDistClosed === "number") ? fmtKm(myDistClosed) : "–";
@@ -707,13 +708,9 @@ function buildSubmissionPayload() {
 }
 
 async function submitToBackend(payload) {
-  if (!TODO_SUBMIT_ENDPOINT || TODO_SUBMIT_ENDPOINT.includes("PLAK_HIER")) {
-    throw new Error("Submit endpoint ontbreekt. Vul TODO_SUBMIT_ENDPOINT in.");
-  }
-
-  const res = await fetch(TODO_SUBMIT_ENDPOINT, {
+  // IMPORTANT: no headers => avoids CORS preflight issues with Apps Script
+  const res = await fetch(SUBMIT_ENDPOINT, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
 
@@ -728,11 +725,16 @@ let submittedOnce = false;
 
 submitBtn.addEventListener("click", async () => {
   if (submittedOnce) return;
-  if (!(routeIds.length === STOPS.length)) return;
+
+  if (!(routeIds.length === STOPS.length)) {
+    setStatus("Maak eerst je route af (alle adressen moeten in ‘Jouw route’ staan).");
+    return;
+  }
 
   try {
     submittedOnce = true;
     submitBtn.disabled = true;
+
     setStatus("Versturen...");
 
     const payload = buildSubmissionPayload();
@@ -741,7 +743,7 @@ submitBtn.addEventListener("click", async () => {
     setStatus(TODO_THANKS_TEXT); // <-- TODO_THANKS_TEXT aanpassen later
   } catch (e) {
     console.error(e);
-    setStatus("Versturen mislukt. Probeer opnieuw.");
+    setStatus("Versturen mislukt. Controleer endpoint/deploy en probeer opnieuw.");
     submittedOnce = false;
     submitBtn.disabled = false;
   }
@@ -786,4 +788,3 @@ init().catch(err => {
 </script>
 </body>
 </html>
-
