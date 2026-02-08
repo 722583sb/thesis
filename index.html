@@ -26,8 +26,6 @@
       display: grid; place-items: center;
       flex: 0 0 auto;
     }
-
-    /* Help button */
     .helpBtn {
       width: 40px; height: 40px;
       border: 1px solid #ddd; background: #fff; border-radius: 12px;
@@ -238,14 +236,12 @@
    ========================= */
 const ADMIN_PASSWORD = "123";
 
-/* ===== EDIT THESE LATER (easy to find) =====
-   TODO_INFO_TEXT: instruction text shown on page open and via the ? button
-   TODO_THANKS_TEXT: message shown after successful submit
-*/
-const TODO_INFO_TEXT = "komt later 1...";
+/* ===== EDIT THESE LATER (easy to find) ===== */
+const TODO_INFO_TEXT = "komt later 2...";
 const TODO_THANKS_TEXT = "bedankt...";
+/* ===== END EDIT ===== */
 
-/* ===== SUBMIT ENDPOINT (Google Apps Script Web App URL) ===== */
+/* ===== SUBMIT ENDPOINT (Apps Script Web App URL) ===== */
 const SUBMIT_ENDPOINT = "https://script.google.com/macros/s/AKfycbyM5_KNM2ZriBBwP06nTdnKV0CvqVf8oaZDv3dLYtOj624KfqSRSgGKHZldmbikfza2KQ/exec";
 /* ===== END CONFIG ===== */
 
@@ -668,7 +664,7 @@ showOptBtn.addEventListener("click", async () => {
 
 /* Info modal logic (open on load + via ? button) */
 function openInfoModal(showStartButton) {
-  infoText.textContent = TODO_INFO_TEXT; // <-- TODO_INFO_TEXT aanpassen later
+  infoText.textContent = TODO_INFO_TEXT;
   infoStartBtn.style.display = showStartButton ? "inline-block" : "none";
   infoModalBackdrop.style.display = "flex";
 }
@@ -679,7 +675,7 @@ infoCloseBtn.addEventListener("click", closeInfoModal);
 infoStartBtn.addEventListener("click", closeInfoModal);
 infoModalBackdrop.addEventListener("click", (e) => { if (e.target === infoModalBackdrop) closeInfoModal(); });
 
-/* ===== SUBMIT to backend (Apps Script) ===== */
+/* ===== SUBMIT (robust with timeout + visible errors) ===== */
 function buildSubmissionPayload() {
   const myDistClosed = routeIds.length ? routeDistanceFromMatrix(routeIds) : null;
   const myDistText = (typeof myDistClosed === "number") ? fmtKm(myDistClosed) : "–";
@@ -708,27 +704,28 @@ function buildSubmissionPayload() {
 }
 
 async function submitToBackend(payload) {
-  const res = await fetch(SUBMIT_ENDPOINT, {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 12000);
 
-  // Apps Script geeft soms geen JSON (of error-page HTML). Daarom eerst als text lezen.
-  const text = await res.text();
-  let data = {};
-  try { data = JSON.parse(text); } catch (_) {}
+  try {
+    const res = await fetch(SUBMIT_ENDPOINT, {
+      method: "POST",
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
 
-  if (!res.ok) {
-    throw new Error("HTTP " + res.status + " – " + (text ? text.slice(0, 180) : "geen response"));
+    const text = await res.text();
+    let data = {};
+    try { data = JSON.parse(text); } catch (_) {}
+
+    if (!res.ok) throw new Error("HTTP " + res.status + " – " + (text ? text.slice(0, 180) : "geen response"));
+    if (data && data.ok === false) throw new Error(data.error || "Backend ok=false");
+
+    return data;
+  } finally {
+    clearTimeout(t);
   }
-  if (data && data.ok === false) {
-    throw new Error(data.error || "Backend ok=false");
-  }
-
-  // Als het géén JSON was maar wel 200, beschouwen we het als OK.
-  return data;
 }
-
 
 let submittedOnce = false;
 
@@ -740,22 +737,22 @@ submitBtn.addEventListener("click", async () => {
     return;
   }
 
+  setStatus("Versturen...");
+  submitBtn.disabled = true;
+
   try {
-    submittedOnce = true;
-    submitBtn.disabled = true;
-
-    setStatus("Versturen...");
-
     const payload = buildSubmissionPayload();
     await submitToBackend(payload);
 
-    setStatus(TODO_THANKS_TEXT); // <-- TODO_THANKS_TEXT aanpassen later
- } catch (e) {
-  console.error(e);
-  setStatus("Versturen mislukt: " + (e?.message || e));
-  submittedOnce = false;
-  submitBtn.disabled = false;
-}
+    submittedOnce = true;
+    setStatus(TODO_THANKS_TEXT);
+  } catch (e) {
+    console.error(e);
+    setStatus("Versturen mislukt: " + (e?.name === "AbortError"
+      ? "timeout (geen antwoord van server)"
+      : (e?.message || e)));
+    submitBtn.disabled = false;
+  }
 });
 
 /* Init */
@@ -767,7 +764,6 @@ async function init() {
   depotMarker.setPopupContent(`<b>Depot</b><br>${DEPOT.label}`);
   depotMarker.setLatLng([DEPOT.lat, DEPOT.lon]);
 
-  // Fit map once
   const group = L.featureGroup([depotMarker, ...stopMarkers.values()]);
   map.fitBounds(group.getBounds().pad(0.18));
 
@@ -785,8 +781,6 @@ async function init() {
   console.log("OPTIMALE ROUTE (onderzoeker):", optimalLabels);
 
   clearStatsAndLine();
-
-  // Show info modal on first open
   openInfoModal(true);
 }
 
@@ -797,5 +791,3 @@ init().catch(err => {
 </script>
 </body>
 </html>
-
-
