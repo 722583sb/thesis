@@ -154,7 +154,7 @@
 
 /* Letter boven nodes: iets hoger + dikker, clean */
 .letterPin {
-  top: -5px;              /* stond rond -2px → iets hoger boven de node */
+  top: -6px;              /* stond rond -2px → iets hoger boven de node */
   font-weight: 1000;      /* maximaal dik (browser clamp meestal op 900–1000) */
   font-size: 12px;        /* zelfde grootte, alleen dikker */
   color: #e53935;         /* rood blijft gelijk */
@@ -411,7 +411,7 @@ for (const s of STOPS) {
   const m = L.marker([s.lat, s.lon], { icon: letterDotIcon(letter) }).addTo(map).bindPopup(`<b>${letter}</b><br>${s.label}`);
   stopMarkers.set(s.id, m);
 }
-let routeLine = L.polyline([], { weight: 2.8, opacity: 0.78 }).addTo(map);
+let routeLine = L.polyline([], { weight: 2.5, opacity: 0.78 }).addTo(map);
 
 /* State: pool + route */
 const shuffle = (arr) => {
@@ -874,6 +874,7 @@ init().catch(err => {
 </script>
 </body>
 </html>
+
 
 
 
