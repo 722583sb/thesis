@@ -152,6 +152,22 @@
   .meta { font-size: 11px; }
 }
 
+    /* Better visibility for node letters (especially on mobile) */
+.letterPin{
+  font-weight: 950;        /* net wat dikker */
+  -webkit-text-stroke: 1px #fff;  /* witte rand */
+  text-shadow:
+    0 1px 0 rgba(255,255,255,.95),
+    0 0 2px rgba(255,255,255,.95);
+}
+
+@media (max-width: 900px) {
+  .letterPin{
+    font-weight: 950;
+    -webkit-text-stroke: 1.2px #fff; /* iets sterker op mobiel */
+  }
+}
+
 
   </style>
 </head>
@@ -401,7 +417,7 @@ for (const s of STOPS) {
   const m = L.marker([s.lat, s.lon], { icon: letterDotIcon(letter) }).addTo(map).bindPopup(`<b>${letter}</b><br>${s.label}`);
   stopMarkers.set(s.id, m);
 }
-let routeLine = L.polyline([], { weight: 4, opacity: 0.9 }).addTo(map);
+let routeLine = L.polyline([], { weight: 3, opacity: 0.82 }).addTo(map);
 
 /* State: pool + route */
 const shuffle = (arr) => {
@@ -864,6 +880,7 @@ init().catch(err => {
 </script>
 </body>
 </html>
+
 
 
 
