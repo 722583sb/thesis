@@ -19,14 +19,7 @@
     h1 { font-size: 16px; margin: 0 0 6px; }
     .meta { font-size: 12px; color: #444; margin: 0 0 10px; line-height: 1.35; }
 
-    .gearBtn {
-      width: 40px; height: 40px;
-      border: 1px solid #ddd; background: #fff; border-radius: 12px;
-      cursor: pointer; font-size: 18px; font-weight: 900;
-      display: grid; place-items: center;
-      flex: 0 0 auto;
-    }
-    .helpBtn {
+    .gearBtn, .helpBtn {
       width: 40px; height: 40px;
       border: 1px solid #ddd; background: #fff; border-radius: 12px;
       cursor: pointer; font-size: 18px; font-weight: 900;
@@ -218,7 +211,7 @@
   </div>
 </div>
 
-<!-- Info modal (shown on load + via ? button) -->
+<!-- Info modal -->
 <div id="infoModalBackdrop" class="modalBackdrop">
   <div class="modal">
     <h2>Informatie</h2>
@@ -230,6 +223,18 @@
   </div>
 </div>
 
+<!-- Submit confirm modal (NEW) -->
+<div id="submitModalBackdrop" class="modalBackdrop">
+  <div class="modal">
+    <h2>Bevestigen</h2>
+    <div class="small" id="submitModalText" style="font-size:13px; color:#333; margin: 6px 0 10px; white-space: pre-wrap;"></div>
+    <div class="btnRow">
+      <button id="submitCancelBtn">Annuleer</button>
+      <button id="submitConfirmBtn">✅ Submit</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* =========================
    CONFIG
@@ -237,8 +242,10 @@
 const ADMIN_PASSWORD = "123";
 
 /* ===== EDIT THESE LATER (easy to find) ===== */
-const TODO_INFO_TEXT = "komt later 2...";
+const TODO_INFO_TEXT = "komt later...";
 const TODO_THANKS_TEXT = "bedankt...";
+/* ===== NEW: submit confirmation text (edit later) ===== */
+const TODO_SUBMIT_CONFIRM_TEXT = "bedankt voor je hulp, als je klaar bent druk hieronder dan nogmaals op submit";
 /* ===== END EDIT ===== */
 
 /* ===== SUBMIT ENDPOINT (Apps Script Web App URL) ===== */
@@ -314,6 +321,12 @@ const infoModalBackdrop = document.getElementById("infoModalBackdrop");
 const infoText = document.getElementById("infoText");
 const infoCloseBtn = document.getElementById("infoCloseBtn");
 const infoStartBtn = document.getElementById("infoStartBtn");
+
+/* Submit confirm modal refs (NEW) */
+const submitModalBackdrop = document.getElementById("submitModalBackdrop");
+const submitModalText = document.getElementById("submitModalText");
+const submitCancelBtn = document.getElementById("submitCancelBtn");
+const submitConfirmBtn = document.getElementById("submitConfirmBtn");
 
 const setStatus = (m) => statusEl.textContent = m;
 const fmtKm = (m) => (m/1000).toFixed(2) + " km";
@@ -662,7 +675,7 @@ showOptBtn.addEventListener("click", async () => {
   updateRouteAndStats();
 });
 
-/* Info modal logic (open on load + via ? button) */
+/* Info modal logic */
 function openInfoModal(showStartButton) {
   infoText.textContent = TODO_INFO_TEXT;
   infoStartBtn.style.display = showStartButton ? "inline-block" : "none";
@@ -675,7 +688,21 @@ infoCloseBtn.addEventListener("click", closeInfoModal);
 infoStartBtn.addEventListener("click", closeInfoModal);
 infoModalBackdrop.addEventListener("click", (e) => { if (e.target === infoModalBackdrop) closeInfoModal(); });
 
-/* ===== SUBMIT (robust with timeout + visible errors) ===== */
+/* Submit confirm modal logic (NEW) */
+let submitConfirmOpen = false;
+function openSubmitConfirmModal() {
+  submitModalText.textContent = TODO_SUBMIT_CONFIRM_TEXT;
+  submitModalBackdrop.style.display = "flex";
+  submitConfirmOpen = true;
+}
+function closeSubmitConfirmModal() {
+  submitModalBackdrop.style.display = "none";
+  submitConfirmOpen = false;
+}
+submitCancelBtn.addEventListener("click", closeSubmitConfirmModal);
+submitModalBackdrop.addEventListener("click", (e) => { if (e.target === submitModalBackdrop) closeSubmitConfirmModal(); });
+
+/* ===== SUBMIT (2-step) ===== */
 function buildSubmissionPayload() {
   const myDistClosed = routeIds.length ? routeDistanceFromMatrix(routeIds) : null;
   const myDistText = (typeof myDistClosed === "number") ? fmtKm(myDistClosed) : "–";
@@ -720,7 +747,6 @@ async function submitToBackend(payload) {
 
     if (!res.ok) throw new Error("HTTP " + res.status + " – " + (text ? text.slice(0, 180) : "geen response"));
     if (data && data.ok === false) throw new Error(data.error || "Backend ok=false");
-
     return data;
   } finally {
     clearTimeout(t);
@@ -729,15 +755,9 @@ async function submitToBackend(payload) {
 
 let submittedOnce = false;
 
-submitBtn.addEventListener("click", async () => {
-  if (submittedOnce) return;
-
-  if (!(routeIds.length === STOPS.length)) {
-    setStatus("Maak eerst je route af (alle adressen moeten in ‘Jouw route’ staan).");
-    return;
-  }
-
+async function doFinalSubmit() {
   setStatus("Versturen...");
+  submitConfirmBtn.disabled = true;
   submitBtn.disabled = true;
 
   try {
@@ -745,14 +765,36 @@ submitBtn.addEventListener("click", async () => {
     await submitToBackend(payload);
 
     submittedOnce = true;
+    closeSubmitConfirmModal();
     setStatus(TODO_THANKS_TEXT);
   } catch (e) {
     console.error(e);
     setStatus("Versturen mislukt: " + (e?.name === "AbortError"
       ? "timeout (geen antwoord van server)"
       : (e?.message || e)));
+    submitConfirmBtn.disabled = false;
     submitBtn.disabled = false;
   }
+}
+
+submitBtn.addEventListener("click", () => {
+  if (submittedOnce) return;
+
+  if (!(routeIds.length === STOPS.length)) {
+    setStatus("Maak eerst je route af (alle adressen moeten in ‘Jouw route’ staan).");
+    return;
+  }
+
+  // Eerste klik: open confirm modal
+  if (!submitConfirmOpen) {
+    openSubmitConfirmModal();
+    return;
+  }
+});
+
+submitConfirmBtn.addEventListener("click", () => {
+  if (submittedOnce) return;
+  doFinalSubmit();
 });
 
 /* Init */
