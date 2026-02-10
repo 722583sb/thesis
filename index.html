@@ -874,6 +874,8 @@ async function init() {
   depotMarker.setLatLng([DEPOT.lat, DEPOT.lon]);
 
   const group = L.featureGroup([depotMarker, ...stopMarkers.values()]);
+ setTimeout(() => {
+  map.invalidateSize();
   map.fitBounds(group.getBounds().pad(0.14));
 
   
@@ -901,6 +903,7 @@ init().catch(err => {
 </script>
 </body>
 </html>
+
 
 
 
