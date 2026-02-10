@@ -161,6 +161,16 @@
   text-shadow: none;      /* expliciet geen schaduw */
 }
 
+/* Make the actual UL fill the whole box so the entire white area is a dropzone */
+.listBox {
+  display: flex;
+  flex-direction: column;
+}
+
+ul.list {
+  flex: 1;            /* neemt alle beschikbare hoogte in de box */
+  min-height: 260px;  /* zodat er altijd een groot dropgebied is, ook met 1 item */
+}
 
 
   </style>
@@ -890,6 +900,7 @@ init().catch(err => {
 </script>
 </body>
 </html>
+
 
 
 
