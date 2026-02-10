@@ -172,6 +172,68 @@ ul.list {
   min-height: 260px;  /* zodat er altijd een groot dropgebied is, ook met 1 item */
 }
 
+  /* ===== Stats layout (Depot top, 2 cards below) ===== */
+.statsTop { padding: 12px; }
+
+.statsDepot {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.statsLabel {
+  font-size: 12px;
+  color: #555;
+  font-weight: 800;
+}
+
+.statsDepotValue {
+  font-size: 13px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.statCard {
+  border: 1px solid #e5e5e5;
+  background: #fff;
+  border-radius: 14px;
+  padding: 10px 12px;
+  text-align: center;
+}
+
+.statTitle {
+  font-size: 12px;
+  color: #666;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.statValue {
+  font-size: 22px;   /* grotere cijfers */
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.statSub {
+  font-size: 11px;
+  color: #777;
+  margin-top: 4px;
+}
+
+/* Mobile: cards blijven naast elkaar, maar iets compacter */
+@media (max-width: 900px) {
+  .statValue { font-size: 20px; }
+  .statCard { padding: 9px 10px; }
+}
+
 
   </style>
 </head>
@@ -192,12 +254,29 @@ ul.list {
       </div>
     </div>
 
-    <div class="statsTop">
-      <div class="row"><div><b>Depot</b></div><div id="depotOut">–</div></div>
-      <div class="row"><div><b>Totale afstand</b></div><div id="distOut">–</div></div>
-      <div class="row"><div><b>Score t.o.v. optimum</b></div><div id="scoreOut">–</div></div>
-      <div class="small" id="optOut" style="display:none;"></div>
+  <div class="statsTop">
+  <div class="statsDepot">
+    <div class="statsLabel">Depot</div>
+    <div class="statsDepotValue" id="depotOut">–</div>
+  </div>
+
+  <div class="statsGrid">
+    <div class="statCard">
+      <div class="statTitle">Totale afstand</div>
+      <div class="statValue" id="distOut">–</div>
     </div>
+
+    <div class="statCard">
+      <div class="statTitle">Score</div>
+      <div class="statValue" id="scoreOut">–</div>
+      <div class="statSub">t.o.v. optimum</div>
+    </div>
+  </div>
+
+  <!-- Je had optOut al verborgen; laat hem weg of hidden houden -->
+  <div class="small" id="optOut" style="display:none;"></div>
+</div>
+
 
     <div id="status" class="status">Initialiseren…</div>
 
@@ -898,6 +977,7 @@ init().catch(err => {
 </script>
 </body>
 </html>
+
 
 
 
