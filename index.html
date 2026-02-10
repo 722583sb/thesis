@@ -176,10 +176,12 @@ ul.list {
 .statsTop { padding: 12px; }
 
 .statsDepot {
-  display: grid;
+  display: flex;
+  align-items: center;
   gap: 6px;
   margin-bottom: 10px;
 }
+
 
 .statsLabel {
   font-size: 12px;
@@ -255,10 +257,11 @@ ul.list {
     </div>
 
   <div class="statsTop">
-  <div class="statsDepot">
-    <div class="statsLabel">Depot</div>
-    <div class="statsDepotValue" id="depotOut">–</div>
-  </div>
+ <div class="statsDepot">
+  <span class="statsLabel">Depot:</span>
+  <span class="statsDepotValue" id="depotOut">–</span>
+</div>
+
 
   <div class="statsGrid">
     <div class="statCard">
@@ -267,9 +270,8 @@ ul.list {
     </div>
 
     <div class="statCard">
-      <div class="statTitle">Score</div>
+      <div class="statTitle">Score t.o.v. optimum</div>
       <div class="statValue" id="scoreOut">–</div>
-      <div class="statSub">t.o.v. optimum</div>
     </div>
   </div>
 
@@ -977,6 +979,7 @@ init().catch(err => {
 </script>
 </body>
 </html>
+
 
 
 
