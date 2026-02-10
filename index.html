@@ -874,7 +874,7 @@ async function init() {
   depotMarker.setLatLng([DEPOT.lat, DEPOT.lon]);
 
   const group = L.featureGroup([depotMarker, ...stopMarkers.values()]);
-  map.fitBounds(group.getBounds().pad(0.18));
+  map.fitBounds(group.getBounds().pad(0.14));
 
   
   setStatus("Afstandsmatrix opbouwen via OSRM (foot)…");
@@ -901,6 +901,7 @@ init().catch(err => {
 </script>
 </body>
 </html>
+
 
 
 
