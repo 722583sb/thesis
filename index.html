@@ -661,6 +661,11 @@ new Sortable(poolList, {
   group: { name: "stops", pull: true, put: true },
   animation: 120,
   onStart: snapshot,
+
+  fallbackOnBody: true,
+  swapThreshold: 0.65,
+  emptyInsertThreshold: 120,
+
   onEnd: () => {
     poolIds = readListIds(poolList);
     routeIds = readListIds(routeList);
@@ -673,6 +678,11 @@ new Sortable(routeList, {
   group: { name: "stops", pull: true, put: true },
   animation: 120,
   onStart: snapshot,
+
+  fallbackOnBody: true,
+  swapThreshold: 0.65,
+  emptyInsertThreshold: 120,
+
   onEnd: () => {
     poolIds = readListIds(poolList);
     routeIds = readListIds(routeList);
@@ -880,6 +890,7 @@ init().catch(err => {
 </script>
 </body>
 </html>
+
 
 
 
