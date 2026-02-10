@@ -607,7 +607,13 @@ async function updateRouteAndStats() {
   updateSubmitEnabled();
 
   const token = ++updateToken;
-  const points = [DEPOT, ...routeIds.map(id => STOPS.find(s => s.id === id)), DEPOT];
+ const basePoints = [DEPOT, ...routeIds.map(id => STOPS.find(s => s.id === id))];
+
+// Alleen sluiten (terug naar depot) als route compleet is
+const points = (routeIds.length === STOPS.length)
+  ? [...basePoints, DEPOT]
+  : basePoints;
+
 
   try {
     setStatus("Route tekenen (foot)…");
@@ -874,6 +880,7 @@ init().catch(err => {
 </script>
 </body>
 </html>
+
 
 
 
