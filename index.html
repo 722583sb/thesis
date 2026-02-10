@@ -875,7 +875,16 @@ async function init() {
 
   const group = L.featureGroup([depotMarker, ...stopMarkers.values()]);
   map.fitBounds(group.getBounds().pad(0.18));
+// Fix map view & keep it consistent for all users
+map.setView([DEPOT.lat, DEPOT.lon], 15);
+map.dragging.disable();
+map.scrollWheelZoom.disable();
+map.doubleClickZoom.disable();
+map.boxZoom.disable();
+map.keyboard.disable();
+if (map.tap) map.tap.disable();
 
+  
   setStatus("Afstandsmatrix opbouwen via OSRM (foot)…");
   const ALL = [DEPOT, ...STOPS];
   distMatrix = await osrmTable(ALL);
@@ -900,6 +909,7 @@ init().catch(err => {
 </script>
 </body>
 </html>
+
 
 
 
