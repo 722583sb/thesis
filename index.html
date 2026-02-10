@@ -182,11 +182,8 @@ ul.list {
 
     <div class="topbar">
       <div>
-        <h1>Routegame – Rotterdam (foot)</h1>
-        <div class="meta">
-          Sleep adressen uit <b>Beschikbaar</b> naar <b>Jouw route</b>. Zolang je route leeg is, zie je geen lijn.
-          Admin (optimale route) zit achter ⚙️.
-        </div>
+        <h1>Routegame – Rotterdam</h1>
+        <div class="meta"></div>
       </div>
 
       <div style="display:flex; gap:10px;">
@@ -596,7 +593,7 @@ async function updateRouteAndStats() {
   if (!distMatrix || !optimal) return;
 
   depotOut.textContent = DEPOT.label;
-  optOut.textContent = "Optimale afstand: " + fmtKm(optimal.bestDistance);
+ // optOut.textContent = "Optimale afstand: " + fmtKm(optimal.bestDistance);
 
   if (routeIds.length === 0) {
     clearStatsAndLine();
@@ -884,7 +881,7 @@ async function init() {
   setStatus("Optimale route berekenen (exact)…");
   optimal = tspHeldKarp(distMatrix);
 
-  optOut.textContent = "Optimale afstand: " + fmtKm(optimal.bestDistance);
+ // optOut.textContent = "Optimale afstand: " + fmtKm(optimal.bestDistance);
 
   const optimalLabels = [DEPOT.label, ...optimal.bestOrderIds.map(id => STOPS.find(s => s.id === id).label), DEPOT.label];
   window.__OPTIMAL_ROUTE_ORDER = optimalLabels;
@@ -901,6 +898,7 @@ init().catch(err => {
 </script>
 </body>
 </html>
+
 
 
 
