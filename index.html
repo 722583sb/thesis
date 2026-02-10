@@ -384,9 +384,8 @@ const fmtKm = (m) => (m/1000).toFixed(2) + " km";
 
 /* Map */
 const map = L.map("map", { zoomControl: true }).setView([DEPOT.lat, DEPOT.lon], 14);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 20,
-  attribution: "© OpenStreetMap contributors"
+L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+  subdomains: "abcd", maxZoom: 20, attribution: "© OpenStreetMap © CARTO"
 }).addTo(map);
 
 const depotIcon = L.divIcon({ className:"", html:'<div class="dot yellow"></div>', iconSize:[14,14], iconAnchor:[7,7] });
@@ -901,6 +900,7 @@ init().catch(err => {
 </script>
 </body>
 </html>
+
 
 
 
