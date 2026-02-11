@@ -236,6 +236,9 @@ ul.list {
   .statCard { padding: 9px 10px; }
 }
 
+/* Address typography: street normal, house number bigger + bolder */
+.streetName { font-weight: 750; }
+.houseNr { font-weight: 950; font-size: 1.15em; }
 
   </style>
 </head>
@@ -400,13 +403,22 @@ const STOPS = [
 
   { id:"S9A", label:"Eendrachtsstraat 62",  street:"Eendrachtsstraat", lat:51.91473905631909, lon:4.476680985422409 },
   { id:"S9",  label:"Eendrachtsstraat 63",  street:"Eendrachtsstraat", lat:51.9150253, lon:4.4761782 },
-  { id:"S11B",label:"Eendrachtsstraat 109-B", street:"Eendrachtsstraat", lat:51.913423100004394, lon:4.477320270820594 },
+  { id:"S11B",label:"Eendrachtsstraat 109B", street:"Eendrachtsstraat", lat:51.913423100004394, lon:4.477320270820594 },
   { id:"S11", label:"Eendrachtsstraat 139", street:"Eendrachtsstraat", lat:51.9127709, lon:4.4776926 },
 
   { id:"S12", label:"Eendrachtsweg 112",    street:"Eendrachtsweg",    lat:51.9120472, lon:4.4773292 },
   { id:"S14", label:"Eendrachtsweg 45",     street:"Eendrachtsweg",    lat:51.9141695, lon:4.4758863 }
 ];
 
+// Split label into street name + house number (last "word")
+function splitStreetAndNumber(label) {
+  const txt = String(label).trim();
+  const m = txt.match(/^(.*\S)\s+(\S+)$/); // "Eendrachtsstraat 109B"
+  if (!m) return { street: txt, number: "" };
+  return { street: m[1], number: m[2] };
+}
+
+  
 /* Letters per stop (A, B, C, ...) */
 // const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 // const stopLetter = new Map(STOPS.map((s, i) => [s.id, LETTERS[i] || String(i+1)]));
@@ -538,7 +550,11 @@ function renderPool() {
     li.innerHTML = `
       <div class="streetTag" style="background:${color}"></div>
       <div class="num">•</div>
-      <div class="name">${s.label}</div>
+      ${(() => {
+  const p = splitStreetAndNumber(s.label);
+  return `<div class="name"><span class="streetName">${p.street}</span> <span class="houseNr">${p.number}</span></div>`;
+})()}
+
     `;
     poolList.appendChild(li);
   }
@@ -556,7 +572,11 @@ function renderRoute() {
     li.innerHTML = `
       <div class="streetTag" style="background:${color}"></div>
       <div class="num">${idx + 1}</div>
-      <div class="name">${s.label}</div>
+      ${(() => {
+  const p = splitStreetAndNumber(s.label);
+  return `<div class="name"><span class="streetName">${p.street}</span> <span class="houseNr">${p.number}</span></div>`;
+})()}
+
     `;
     routeList.appendChild(li);
   });
@@ -990,6 +1010,7 @@ init().catch(err => {
 </script>
 </body>
 </html>
+
 
 
 
