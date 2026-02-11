@@ -408,9 +408,18 @@ const STOPS = [
 ];
 
 /* Letters per stop (A, B, C, ...) */
-const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-const stopLetter = new Map(STOPS.map((s, i) => [s.id, LETTERS[i] || String(i+1)]));
+// const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+// const stopLetter = new Map(STOPS.map((s, i) => [s.id, LETTERS[i] || String(i+1)]));
 
+  /* House number per stop (derived from label) */
+function getHouseNumberFromLabel(label) {
+  // pakt alles na de laatste spatie: "Eendrachtsstraat 109-B" -> "109-B"
+  const m = String(label).trim().match(/(\S+)$/);
+  return m ? m[1] : "";
+}
+const stopHouseNumber = new Map(STOPS.map(s => [s.id, getHouseNumberFromLabel(s.label)]));
+
+  
 /* Street -> color mapping */
 const PALETTE = ["#EF5350","#AB47BC","#5C6BC0","#29B6F6","#26A69A","#66BB6A","#FFCA28","#FFA726","#8D6E63","#78909C"];
 const uniq = (arr) => Array.from(new Set(arr));
@@ -468,22 +477,22 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
 
 const depotIcon = L.divIcon({ className:"", html:'<div class="dot yellow"></div>', iconSize:[14,14], iconAnchor:[7,7] });
 
-const letterDotIcon = (letter) => L.divIcon({
+ const letterDotIcon = (txt) => L.divIcon({
   className:"",
   html: `
     <div class="letterPinWrap">
-      <div class="letterPin">${letter}</div>
+      <div class="letterPin">${txt}</div>
       <div class="letterPinDot"><div class="dot red"></div></div>
     </div>
   `,
   iconSize:[22,34],
   iconAnchor:[11,24]
 });
-const letterNumberedIcon = (letter, n) => L.divIcon({
+const letterNumberedIcon = (txt, n) => L.divIcon({
   className:"",
   html: `
     <div class="letterPinWrap">
-      <div class="letterPin">${letter}</div>
+      <div class="letterPin">${txt}</div>
       <div class="letterPinDot"><div class="numDot">${n}</div></div>
     </div>
   `,
@@ -491,14 +500,16 @@ const letterNumberedIcon = (letter, n) => L.divIcon({
   iconAnchor:[11,24]
 });
 
+
 let depotMarker = L.marker([DEPOT.lat, DEPOT.lon], { icon: depotIcon }).addTo(map).bindPopup(`<b>Depot</b><br>${DEPOT.label}`);
 
 const stopMarkers = new Map();
 for (const s of STOPS) {
-  const letter = stopLetter.get(s.id) || "";
-  const m = L.marker([s.lat, s.lon], { icon: letterDotIcon(letter) }).addTo(map).bindPopup(`<b>${letter}</b><br>${s.label}`);
+  const hn = stopHouseNumber.get(s.id) || "";
+  const m = L.marker([s.lat, s.lon], { icon: letterDotIcon(hn) }).addTo(map).bindPopup(`<b>${hn}</b><br>${s.label}`);
   stopMarkers.set(s.id, m);
 }
+  
 let routeLine = L.polyline([], { weight: 2.5, opacity: 0.78 }).addTo(map);
 
 /* State: pool + route */
@@ -527,7 +538,7 @@ function renderPool() {
     li.innerHTML = `
       <div class="streetTag" style="background:${color}"></div>
       <div class="num">•</div>
-      <div class="name"><span class="letterInline">${stopLetter.get(id) || ""}</span>${s.label}</div>
+      <div class="name">${s.label}</div>
     `;
     poolList.appendChild(li);
   }
@@ -545,7 +556,7 @@ function renderRoute() {
     li.innerHTML = `
       <div class="streetTag" style="background:${color}"></div>
       <div class="num">${idx + 1}</div>
-      <div class="name"><span class="letterInline">${stopLetter.get(id) || ""}</span>${s.label}</div>
+      <div class="name">${s.label}</div>
     `;
     routeList.appendChild(li);
   });
@@ -553,16 +564,16 @@ function renderRoute() {
 }
 
 function updateMarkerStyles() {
-  for (const s of STOPS) {
-    const m = stopMarkers.get(s.id);
-    const letter = stopLetter.get(s.id) || "";
-    if (m) m.setIcon(letterDotIcon(letter));
-  }
-  routeIds.forEach((id, idx) => {
-    const m = stopMarkers.get(id);
-    const letter = stopLetter.get(id) || "";
-    if (m) m.setIcon(letterNumberedIcon(letter, idx + 1));
-  });
+ for (const s of STOPS) {
+  const m = stopMarkers.get(s.id);
+  const hn = stopHouseNumber.get(s.id) || "";
+  if (m) m.setIcon(letterDotIcon(hn));
+}
+routeIds.forEach((id, idx) => {
+  const m = stopMarkers.get(id);
+  const hn = stopHouseNumber.get(id) || "";
+  if (m) m.setIcon(letterNumberedIcon(hn, idx + 1));
+});
 }
 
 function updateSubmitEnabled() {
@@ -979,6 +990,7 @@ init().catch(err => {
 </script>
 </body>
 </html>
+
 
 
 
